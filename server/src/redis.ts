@@ -1,10 +1,11 @@
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
+import type { RedisOptions } from 'ioredis';
 
-const redisConfig = {
+const redisConfig: RedisOptions = {
     host: process.env.REDIS_HOST || 'localhost',
-    port: process.env.REDIS_PORT || 6379,
+    port: Number(process.env.REDIS_PORT) || 6379,
     password: process.env.REDIS_PASSWORD || undefined,
-    retryStrategy: (times) => {
+    retryStrategy: (times: number) => {
         // Only retry 3 times, then give up
         if (times > 3) {
             console.warn('⚠️  Redis unavailable - using memory cache fallback');
@@ -33,7 +34,7 @@ let redisAvailable = false;
 redisClient.connect().then(() => {
     redisAvailable = true;
     console.log('✅ Redis client connected');
-}).catch((err) => {
+}).catch((err: Error) => {
     redisAvailable = false;
     console.warn('⚠️  Redis connection failed - running without Redis');
     console.warn('   Install Redis for production use:');
@@ -45,7 +46,7 @@ redisPub.connect().catch(() => { });
 redisSub.connect().catch(() => { });
 
 // Error handling
-redisClient.on('error', (err) => {
+redisClient.on('error', (err: Error) => {
     if (redisAvailable) {
         console.error('Redis Client Error:', err.message);
     }
@@ -56,7 +57,7 @@ redisSub.on('error', () => { }); // Silent
 
 // Cache helper functions
 export const cache = {
-    async get(key) {
+    async get(key: string): Promise<any | null> {
         if (!redisAvailable) return null;
         try {
             const data = await redisClient.get(key);
@@ -66,7 +67,7 @@ export const cache = {
         }
     },
 
-    async set(key, value, ttlSeconds = 2) {
+    async set(key: string, value: any, ttlSeconds = 2): Promise<boolean> {
         if (!redisAvailable) return false;
         try {
             await redisClient.set(key, JSON.stringify(value), 'EX', ttlSeconds);
@@ -76,7 +77,7 @@ export const cache = {
         }
     },
 
-    async del(key) {
+    async del(key: string): Promise<boolean> {
         if (!redisAvailable) return false;
         try {
             await redisClient.del(key);
@@ -86,17 +87,17 @@ export const cache = {
         }
     },
 
-    async mget(keys) {
+    async mget(keys: string[]): Promise<(any | null)[]> {
         if (!redisAvailable) return keys.map(() => null);
         try {
             const values = await redisClient.mget(keys);
-            return values.map(v => v ? JSON.parse(v) : null);
+            return values.map((v: string | null) => v ? JSON.parse(v) : null);
         } catch (err) {
             return keys.map(() => null);
         }
     },
 
-    async mset(keyValuePairs, ttlSeconds = 2) {
+    async mset(keyValuePairs: Record<string, any>, ttlSeconds = 2): Promise<boolean> {
         if (!redisAvailable) return false;
         try {
             const pipeline = redisClient.pipeline();

@@ -2,15 +2,28 @@ import { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer } from 'recharts';
 
+export interface PriceData {
+    symbol: string;
+    price: number;
+    change24h: number;
+    timestamp: number;
+    volume24h: number;
+    marketCap: number;
+}
+
+interface PriceCardProps {
+    data: PriceData | null;
+}
+
 /**
  * Price card component for individual crypto
  * @param {Object} props
  * @param {Object} props.data - Price data
  */
-export function PriceCard({ data }) {
-    const [previousPrice, setPreviousPrice] = useState(null);
-    const [priceDirection, setPriceDirection] = useState(null);
-    const [sparklineData, setSparklineData] = useState([]);
+export function PriceCard({ data }: PriceCardProps) {
+    const [previousPrice, setPreviousPrice] = useState<number | null>(null);
+    const [priceDirection, setPriceDirection] = useState<'up' | 'down' | null>(null);
+    const [sparklineData, setSparklineData] = useState<{ price: number }[]>([]);
 
     useEffect(() => {
         if (data && data.price !== undefined) {

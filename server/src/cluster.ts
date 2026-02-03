@@ -7,7 +7,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const CLUSTER_ENABLED = process.env.CLUSTER_ENABLED === 'true';
-const WORKERS = parseInt(process.env.WORKERS) || os.cpus().length;
+const WORKERS = parseInt(process.env.WORKERS || '1') || os.cpus().length;
 
 if (CLUSTER_ENABLED && cluster.isPrimary) {
     console.log('🔧 Cluster mode enabled');

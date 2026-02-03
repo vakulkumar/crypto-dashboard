@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
+import { io, Socket } from 'socket.io-client';
+import type { PriceData } from '../components/PriceCard';
 
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
 
@@ -9,10 +10,10 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:3000';
  */
 export function useWebSocket() {
     const [connected, setConnected] = useState(false);
-    const [prices, setPrices] = useState({});
-    const [latency, setLatency] = useState(null);
-    const socketRef = useRef(null);
-    const pingIntervalRef = useRef(null);
+    const [prices, setPrices] = useState<Record<string, PriceData>>({});
+    const [latency, setLatency] = useState<number | null>(null);
+    const socketRef = useRef<Socket | null>(null);
+    const pingIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
         // Create socket connection
@@ -53,15 +54,15 @@ export function useWebSocket() {
         });
 
         // Price update handlers
-        socket.on('price-update', (data) => {
+        socket.on('price-update', (data: PriceData) => {
             setPrices(prev => ({
                 ...prev,
                 [data.symbol]: data
             }));
         });
 
-        socket.on('price-update-bulk', (dataArray) => {
-            const newPrices = {};
+        socket.on('price-update-bulk', (dataArray: PriceData[]) => {
+            const newPrices: Record<string, PriceData> = {};
             dataArray.forEach(data => {
                 newPrices[data.symbol] = data;
             });
@@ -69,13 +70,13 @@ export function useWebSocket() {
         });
 
         // Pong handler for latency
-        socket.on('pong', (timestamp) => {
+        socket.on('pong', (timestamp: number) => {
             const rtt = Date.now() - timestamp;
             setLatency(rtt);
         });
 
         // Error handler
-        socket.on('error', (error) => {
+        socket.on('error', (error: any) => {
             console.error('Socket error:', error);
         });
 
@@ -89,14 +90,14 @@ export function useWebSocket() {
     }, []);
 
     // Subscribe to specific symbols
-    const subscribe = useCallback((symbols) => {
+    const subscribe = useCallback((symbols: string | string[]) => {
         if (socketRef.current && connected) {
             socketRef.current.emit('subscribe', symbols);
         }
     }, [connected]);
 
     // Unsubscribe from symbols
-    const unsubscribe = useCallback((symbols) => {
+    const unsubscribe = useCallback((symbols: string | string[]) => {
         if (socketRef.current && connected) {
             socketRef.current.emit('unsubscribe', symbols);
         }

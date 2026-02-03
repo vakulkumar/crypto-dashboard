@@ -1,5 +1,6 @@
 import amqp from 'amqplib';
 import type { Channel } from 'amqplib';
+import logger from '../utils/logger.js';
 
 const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://localhost';
 
@@ -21,28 +22,28 @@ class RabbitMQService {
         this.connecting = true;
 
         try {
-            console.log('🐰 Connecting to RabbitMQ...');
+            logger.info('🐰 Connecting to RabbitMQ...');
             this.connection = await amqp.connect(RABBITMQ_URL);
 
             if (this.connection) {
                 this.channel = await this.connection.createChannel();
 
                 this.connection.on('error', (err: any) => {
-                    console.error('RabbitMQ Connection Error:', err);
+                    logger.error('RabbitMQ Connection Error:', err);
                     this.close();
                 });
 
                 this.connection.on('close', () => {
-                    console.warn('RabbitMQ Connection Closed. Reconnecting...');
+                    logger.warn('RabbitMQ Connection Closed. Reconnecting...');
                     this.close();
                 });
 
-                console.log('✅ Connected to RabbitMQ');
+                logger.info('✅ Connected to RabbitMQ');
             }
             this.connecting = false;
             return this.channel;
         } catch (err) {
-            console.error('❌ Failed to connect to RabbitMQ:', err);
+            logger.error('❌ Failed to connect to RabbitMQ:', err);
             this.connecting = false;
             return null;
         }
@@ -76,7 +77,7 @@ class RabbitMQService {
                 return true;
             }
         } catch (err) {
-            console.error('Error publishing to queue:', err);
+            logger.error('Error publishing to queue:', err);
         }
         return false;
     }
@@ -84,7 +85,7 @@ class RabbitMQService {
     async consume(queueName: string, callback: (data: any) => Promise<void> | void) {
         const channel = await this.assertQueue(queueName);
         if (channel) {
-            console.log(`👂 Listening on queue: ${queueName}`);
+            logger.info(`👂 Listening on queue: ${queueName}`);
             channel.consume(queueName, async (msg) => {
                 if (msg) {
                     try {
@@ -92,7 +93,7 @@ class RabbitMQService {
                         await callback(content);
                         channel.ack(msg);
                     } catch (err) {
-                        console.error('Error processing message:', err);
+                        logger.error('Error processing message:', err);
                         // Nack but don't requeue to avoid infinite loop on bad data
                         channel.nack(msg, false, false);
                     }

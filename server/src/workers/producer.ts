@@ -1,5 +1,6 @@
 import { rabbitMQ } from '../services/rabbitmq.js';
 import { fileURLToPath } from 'url';
+import logger from '../utils/logger.js';
 
 const SYMBOLS = ['BTC', 'ETH', 'SOL', 'ADA', 'DOT', 'AVAX', 'MATIC', 'LINK'];
 
@@ -24,7 +25,7 @@ function generatePriceChange(currentPrice: number, volatility = 0.2): number {
 }
 
 export async function startProducer() {
-    console.log('🏭 Starting Producer Worker (Ingestion Service)...');
+    logger.info('🏭 Starting Producer Worker (Ingestion Service)...');
 
     // Connect to RabbitMQ
     await rabbitMQ.connect();

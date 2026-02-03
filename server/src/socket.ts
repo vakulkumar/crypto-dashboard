@@ -2,50 +2,11 @@ import { Server, Socket } from 'socket.io';
 import { createAdapter } from '@socket.io/redis-adapter';
 import { redisPub, redisSub, redisAvailable } from './redis.js';
 import { getAllPrices, SYMBOLS } from './dataService.js';
+import logger from './utils/logger.js';
+import { isRateLimited, rateLimiters } from './utils/rateLimiter.js';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Server as HttpServer } from 'http';
 import type { Http2SecureServer } from 'http2';
-
-const MAX_MESSAGES_PER_SECOND = parseInt(process.env.MAX_MESSAGES_PER_SECOND || '100');
-
-// Rate limiting per client
-const rateLimiters = new Map<string, { count: number; resetAt: number }>();
-
-/**
- * Check if client exceeds rate limit
- * @param {string} clientId 
- * @returns {boolean}
- */
-function isRateLimited(clientId: string): boolean {
-    const now = Date.now();
-    const limiter = rateLimiters.get(clientId);
-
-    if (!limiter) {
-        rateLimiters.set(clientId, { count: 1, resetAt: now + 1000 });
-        return false;
-    }
-
-    if (now > limiter.resetAt) {
-        limiter.count = 1;
-        limiter.resetAt = now + 1000;
-        return false;
-    }
-
-    limiter.count++;
-    return limiter.count > MAX_MESSAGES_PER_SECOND;
-}
-
-/**
- * Clean up old rate limiters
- */
-setInterval(() => {
-    const now = Date.now();
-    for (const [clientId, limiter] of rateLimiters.entries()) {
-        if (now > limiter.resetAt + 5000) {
-            rateLimiters.delete(clientId);
-        }
-    }
-}, 10000);
 
 /**
  * Initialize Socket.io server with Redis adapter (if available)
@@ -76,12 +37,12 @@ export function initializeSocket(httpServer: HttpServer | Http2SecureServer): Se
     if (redisAvailable) {
         try {
             io.adapter(createAdapter(redisPub, redisSub));
-            console.log('✅ Socket.io using Redis adapter');
+            logger.info('✅ Socket.io using Redis adapter');
         } catch (err) {
-            console.warn('⚠️  Redis adapter failed - using in-memory adapter');
+            logger.warn('⚠️  Redis adapter failed - using in-memory adapter');
         }
     } else {
-        console.warn('⚠️  Running without Redis adapter (in-memory only)');
+        logger.warn('⚠️  Running without Redis adapter (in-memory only)');
     }
 
     // Connection stats
@@ -92,14 +53,14 @@ export function initializeSocket(httpServer: HttpServer | Http2SecureServer): Se
         connectionCount++;
         totalConnections++;
 
-        console.log(`🔌 Client connected: ${socket.id} (Total: ${connectionCount})`);
+        logger.info(`🔌 Client connected: ${socket.id} (Total: ${connectionCount})`);
 
         // Send initial data immediately
         try {
             const allPrices = await getAllPrices();
             socket.emit('price-update-bulk', allPrices);
         } catch (err) {
-            console.error('Error sending initial data:', err);
+            logger.error('Error sending initial data:', err);
         }
 
         // Join the 'all' room by default
@@ -119,7 +80,7 @@ export function initializeSocket(httpServer: HttpServer | Http2SecureServer): Se
             symbols.forEach(symbol => {
                 if (SYMBOLS.includes(symbol)) {
                     socket.join(`crypto:${symbol}`);
-                    console.log(`📈 ${socket.id} subscribed to ${symbol}`);
+                    logger.info(`📈 ${socket.id} subscribed to ${symbol}`);
                 }
             });
 
@@ -138,7 +99,7 @@ export function initializeSocket(httpServer: HttpServer | Http2SecureServer): Se
 
             symbols.forEach(symbol => {
                 socket.leave(`crypto:${symbol}`);
-                console.log(`📉 ${socket.id} unsubscribed from ${symbol}`);
+                logger.info(`📉 ${socket.id} unsubscribed from ${symbol}`);
             });
 
             socket.emit('unsubscribed', symbols);
@@ -156,18 +117,18 @@ export function initializeSocket(httpServer: HttpServer | Http2SecureServer): Se
         socket.on('disconnect', (reason: string) => {
             connectionCount--;
             rateLimiters.delete(socket.id);
-            console.log(`🔌 Client disconnected: ${socket.id} (Total: ${connectionCount}, Reason: ${reason})`);
+            logger.info(`🔌 Client disconnected: ${socket.id} (Total: ${connectionCount}, Reason: ${reason})`);
         });
 
         // Error handling
         socket.on('error', (err: any) => {
-            console.error(`Socket error for ${socket.id}:`, err);
+            logger.error(`Socket error for ${socket.id}:`, err);
         });
     });
 
     // Log stats periodically
     setInterval(() => {
-        console.log(`📊 Stats - Active: ${connectionCount}, Total served: ${totalConnections}`);
+        logger.info(`📊 Stats - Active: ${connectionCount}, Total served: ${totalConnections}`);
     }, 30000);
 
     return io;

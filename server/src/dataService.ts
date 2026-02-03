@@ -1,6 +1,7 @@
 import { cache } from './redis.js';
 import type { Server } from 'socket.io';
 import { rabbitMQ } from './services/rabbitmq.js';
+import logger from './utils/logger.js';
 
 // Supported crypto symbols
 const SYMBOLS = ['BTC', 'ETH', 'SOL', 'ADA', 'DOT', 'AVAX', 'MATIC', 'LINK'];
@@ -106,22 +107,22 @@ export function updatePrices(): void {
  * @param {number} interval - Update interval in ms (default: 1500ms)
  */
 export async function startPriceUpdates(io: Server, interval = 1500) {
-    console.log('📊 Starting price update service...');
+    logger.info('📊 Starting price update service...');
 
     // Try to connect to RabbitMQ
     const channel = await rabbitMQ.connect();
 
     if (channel) {
-        console.log('✅ Using RabbitMQ Consumer for ingestion');
+        logger.info('✅ Using RabbitMQ Consumer for ingestion');
         startConsumer(io, interval);
     } else {
-        console.log('⚠️  RabbitMQ unavailable - using internal generator');
+        logger.warn('⚠️  RabbitMQ unavailable - using internal generator');
         startInternalGenerator(io, interval);
     }
 }
 
 function startInternalGenerator(io: Server, interval: number) {
-    console.log(`✅ Internal Generator running every ${interval}ms`);
+    logger.info(`✅ Internal Generator running every ${interval}ms`);
     setInterval(async () => {
         updatePrices();
         const priceData = getCurrentPrices();
@@ -156,7 +157,7 @@ async function startConsumer(io: Server, broadcastInterval: number) {
         }
     });
 
-    console.log(`✅ Consumer Broadcast running every ${broadcastInterval}ms`);
+    logger.info(`✅ Consumer Broadcast running every ${broadcastInterval}ms`);
     // Decoupled Broadcast Loop
     setInterval(async () => {
         if (updateBuffer.size === 0) return;

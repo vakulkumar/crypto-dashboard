@@ -1,5 +1,6 @@
 import { Redis } from 'ioredis';
 import type { RedisOptions } from 'ioredis';
+import logger from './utils/logger.js';
 
 const redisConfig: RedisOptions = {
     host: process.env.REDIS_HOST || 'localhost',
@@ -8,7 +9,7 @@ const redisConfig: RedisOptions = {
     retryStrategy: (times: number) => {
         // Only retry 3 times, then give up
         if (times > 3) {
-            console.warn('⚠️  Redis unavailable - using memory cache fallback');
+            logger.warn('⚠️  Redis unavailable - using memory cache fallback');
             return null;
         }
         const delay = Math.min(times * 50, 2000);
@@ -33,13 +34,13 @@ let redisAvailable = false;
 // Try to connect to Redis
 redisClient.connect().then(() => {
     redisAvailable = true;
-    console.log('✅ Redis client connected');
+    logger.info('✅ Redis client connected');
 }).catch((err: Error) => {
     redisAvailable = false;
-    console.warn('⚠️  Redis connection failed - running without Redis');
-    console.warn('   Install Redis for production use:');
-    console.warn('   - macOS: brew install redis && brew services start redis');
-    console.warn('   - Docker: docker run -d -p 6379:6379 redis:latest');
+    logger.warn('⚠️  Redis connection failed - running without Redis');
+    logger.warn('   Install Redis for production use:');
+    logger.warn('   - macOS: brew install redis && brew services start redis');
+    logger.warn('   - Docker: docker run -d -p 6379:6379 redis:latest');
 });
 
 redisPub.connect().catch(() => { });
@@ -48,7 +49,7 @@ redisSub.connect().catch(() => { });
 // Error handling
 redisClient.on('error', (err: Error) => {
     if (redisAvailable) {
-        console.error('Redis Client Error:', err.message);
+        logger.error('Redis Client Error:', err.message);
     }
 });
 

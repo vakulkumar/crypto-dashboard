@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import { initializeSocket } from './socket.js';
 import { startPriceUpdates } from './dataService.js';
 import { redisClient, redisAvailable } from './redis.js';
+import logger from './utils/logger.js';
 
 // Load environment variables
 dotenv.config();
@@ -63,19 +64,19 @@ startPriceUpdates(io, 1500); // Update every 1.5 seconds
 // Start server
 const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
-    console.log('🚀 Crypto Dashboard Server');
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`📡 Server running on port ${PORT}`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`💾 Redis: ${redisAvailable ? 'Enabled' : 'Disabled (using memory cache)'}`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info('🚀 Crypto Dashboard Server');
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    logger.info(`📡 Server running on port ${PORT}`);
+    logger.info(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`💾 Redis: ${redisAvailable ? 'Enabled' : 'Disabled (using memory cache)'}`);
+    logger.info('━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 });
 
 // Graceful shutdown
 process.on('SIGTERM', () => {
-    console.log('SIGTERM received, shutting down gracefully...');
+    logger.info('SIGTERM received, shutting down gracefully...');
     httpServer.close(() => {
-        console.log('Server closed');
+        logger.info('Server closed');
         if (redisAvailable) {
             redisClient.quit();
         }
@@ -84,9 +85,9 @@ process.on('SIGTERM', () => {
 });
 
 process.on('SIGINT', () => {
-    console.log('\nSIGINT received, shutting down gracefully...');
+    logger.info('\nSIGINT received, shutting down gracefully...');
     httpServer.close(() => {
-        console.log('Server closed');
+        logger.info('Server closed');
         if (redisAvailable) {
             redisClient.quit();
         }

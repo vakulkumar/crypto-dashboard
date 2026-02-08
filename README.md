@@ -1,40 +1,50 @@
 # 🚀 CryptoPulse - Real-Time Crypto Dashboard
 
-A high-performance, real-time cryptocurrency dashboard built with WebSockets, Redis, Node.js, and React. Designed to handle **1,000+ concurrent users** with sub-100ms latency.
+A high-performance, real-time cryptocurrency dashboard built with **TypeScript**, WebSockets, Redis, RabbitMQ, and React. Designed to handle **1,000+ concurrent users** with sub-100ms latency.
 
 ![Dashboard Preview](https://img.shields.io/badge/Status-Production%20Ready-success)
 ![Concurrent Users](https://img.shields.io/badge/Concurrent%20Users-1000%2B-blue)
 ![WebSocket](https://img.shields.io/badge/WebSocket-Socket.io-black)
 ![Redis](https://img.shields.io/badge/Cache-Redis-red)
+![TypeScript](https://img.shields.io/badge/Language-TypeScript-blue)
 
 ## 🌟 Features
 
 - ⚡ **Real-time price updates** - Live crypto prices updated every 1.5 seconds
 - 🔄 **WebSocket communication** - Bi-directional, low-latency data streaming
 - 💾 **Redis caching** - Fast data access with 2-3 second TTL
+- 🐰 **RabbitMQ integration** - Message queue for decoupled data ingestion
 - 📊 **Live charts** - Sparkline visualizations for price trends
 - 🎨 **Premium UI** - Modern dark theme with glassmorphism effects
 - 🔧 **Clustering support** - Multi-core utilization for horizontal scaling
 - ⚡ **Rate limiting** - Per-client message throttling
 - 📈 **Connection monitoring** - Real-time latency and connection status
+- 📝 **Structured logging** - Winston-based logging with JSON format
+- ✅ **Unit tests** - Jest test suite for critical components
 
 ## 🏗️ Architecture
 
 ### Tech Stack
 
 **Backend:**
-- Node.js (ES Modules)
+- Node.js with **TypeScript**
 - Socket.io 4.x (WebSocket server)
 - ioredis (Redis client)
+- amqplib (RabbitMQ client)
 - Express (HTTP server)
+- Winston (Structured logging)
 - @socket.io/redis-adapter (Horizontal scaling)
 
 **Frontend:**
-- React 18
+- React 18 with **TypeScript**
 - Vite 7.x
 - Socket.io-client
 - Recharts (Data visualization)
 - Lucide React (Icons)
+
+**Testing:**
+- Jest 30.x
+- ts-jest for TypeScript support
 
 **Load Testing:**
 - Artillery.io
@@ -43,37 +53,52 @@ A high-performance, real-time cryptocurrency dashboard built with WebSockets, Re
 ### Key Optimizations
 
 1. **Redis Adapter** - Synchronize Socket.io across multiple server instances
-2. **Node.js Clustering** - Utilize all CPU cores with worker processes
-3. **Connection Pooling** - Reuse Redis connections efficiently
-4. **Rate Limiting** - Prevent client abuse (100 msgs/sec/client)
-5. **Room-based Broadcasting** - Send updates only to subscribed clients
-6. **Message Batching** - Reduce serialization overhead
-7. **Compression** - Gzip compression for HTTP responses
+2. **RabbitMQ Consumer** - Decoupled data ingestion from broadcasting
+3. **Node.js Clustering** - Utilize all CPU cores with worker processes
+4. **Connection Pooling** - Reuse Redis connections efficiently
+5. **Rate Limiting** - Prevent client abuse (100 msgs/sec/client)
+6. **Room-based Broadcasting** - Send updates only to subscribed clients
+7. **Message Batching** - Reduce serialization overhead
+8. **Compression** - Gzip compression for HTTP responses
 
 ## 📦 Project Structure
 
 ```
 crypto-dashboard/
-├── server/                 # Node.js backend
+├── server/                     # Node.js backend (TypeScript)
 │   ├── src/
-│   │   ├── index.js       # Main server entry
-│   │   ├── socket.js      # Socket.io handlers
-│   │   ├── redis.js       # Redis client & caching
-│   │   ├── dataService.js # Mock price generator
-│   │   └── cluster.js     # Cluster management
+│   │   ├── index.ts           # Main server entry
+│   │   ├── socket.ts          # Socket.io handlers
+│   │   ├── redis.ts           # Redis client & caching
+│   │   ├── dataService.ts     # Price data service
+│   │   ├── cluster.ts         # Cluster management
+│   │   ├── services/
+│   │   │   └── rabbitmq.ts    # RabbitMQ service
+│   │   ├── utils/
+│   │   │   ├── logger.ts      # Winston logger
+│   │   │   └── rateLimiter.ts # Rate limiting utility
+│   │   └── workers/
+│   │       └── producer.ts    # Mock data producer
+│   ├── tests/
+│   │   ├── rateLimiter.test.ts
+│   │   └── redis.test.ts
+│   ├── tsconfig.json
 │   └── package.json
 │
-├── client/                # React frontend
+├── client/                    # React frontend (TypeScript)
 │   ├── src/
-│   │   ├── App.jsx        # Main app
-│   │   ├── App.css        # Premium styles
-│   │   ├── components/    # UI components
-│   │   └── hooks/         # WebSocket hook
+│   │   ├── App.tsx            # Main app
+│   │   ├── App.css            # Premium styles
+│   │   ├── components/
+│   │   │   └── PriceCard.tsx  # Price card component
+│   │   └── hooks/
+│   │       └── useWebSocket.ts # WebSocket hook
+│   ├── tsconfig.json
 │   └── package.json
 │
-└── load-test/             # Load testing
-    ├── artillery.yml      # Artillery config
-    ├── custom-test.js     # Custom load test
+└── load-test/                 # Load testing
+    ├── artillery.yml          # Artillery config
+    ├── custom-test.js         # Custom load test
     └── package.json
 ```
 
@@ -83,6 +108,7 @@ crypto-dashboard/
 
 - Node.js 20.16+ (v20.19+ or v22.12+ recommended)
 - Redis server (for caching)
+- RabbitMQ (optional - for message queue)
 - npm or yarn
 
 ### 1. Install Redis
@@ -105,7 +131,22 @@ sudo systemctl start redis
 docker run -d -p 6379:6379 redis:latest
 ```
 
-### 2. Setup Backend
+### 2. Install RabbitMQ (Optional)
+
+**Docker (Recommended):**
+```bash
+docker run -d -p 5672:5672 -p 15672:15672 rabbitmq:3-management
+```
+
+**macOS:**
+```bash
+brew install rabbitmq
+brew services start rabbitmq
+```
+
+> **Note:** RabbitMQ is optional. The system will fall back to an internal price generator if RabbitMQ is unavailable.
+
+### 3. Setup Backend
 
 ```bash
 cd server
@@ -114,16 +155,26 @@ npm install
 # Copy environment file
 cp .env.example .env
 
-# Start development server
+# Start development server (with hot reload)
 npm run dev
 
-# OR start with clustering (production)
+# OR build and start production
+npm run build
 npm start
 ```
 
 The server will start on `http://localhost:3000`
 
-### 3. Setup Frontend
+### 4. Start Price Producer (Optional)
+
+If using RabbitMQ, start the mock data producer:
+
+```bash
+cd server
+npm run producer
+```
+
+### 5. Setup Frontend
 
 ```bash
 cd client
@@ -135,56 +186,55 @@ npm run dev
 
 The dashboard will open at `http://localhost:5173`
 
-### 4. Setup Load Testing
+### 6. Run Tests
+
+```bash
+cd server
+npm test
+```
+
+### 7. Setup Load Testing
 
 ```bash
 cd load-test
 npm install
 ```
 
-## 🧪 Load Testing
+## 🧪 Testing
 
-### Option 1: Custom Load Test (Recommended)
+### Unit Tests
 
-Test with 1,000 concurrent connections:
+Run the Jest test suite:
+
+```bash
+cd server
+npm test
+```
+
+Tests include:
+- Rate limiter functionality
+- Redis caching behavior
+
+### Load Testing
+
+**Custom Load Test (Recommended):**
 
 ```bash
 cd load-test
-node custom-test.js
-```
-
-**Custom parameters:**
-```bash
 SERVER_URL=http://localhost:3000 NUM_CLIENTS=1000 TEST_DURATION=120 node custom-test.js
 ```
 
-**What it tests:**
-- Connection success rate
-- Message latency (avg, p50, p95, p99)
-- Messages per second
-- Memory usage
-- Error rate
-
-**Success criteria:**
-- ✅ >99% connection success rate
-- ✅ <100ms average latency
-- ✅ <1% error rate
-
-### Option 2: Artillery Load Test
-
-Professional load testing with Artillery:
+**Artillery Load Test:**
 
 ```bash
 cd load-test
 npm run artillery
 ```
 
-**Phases:**
-1. Warm-up: 0-100 users over 30s
-2. Ramp-up: 100-500 users over 60s
-3. Spike: 500-1000 users over 30s
-4. Sustain: 1000 users for 2 minutes
-5. Cool down: 30s
+**Success criteria:**
+- ✅ >99% connection success rate
+- ✅ <100ms average latency
+- ✅ <1% error rate
 
 ## 📊 Performance Metrics
 
@@ -193,9 +243,9 @@ Expected performance with proper setup:
 | Metric | Target | Typical |
 |--------|--------|---------|
 | Concurrent Connections | 1,000+ | ✅ |
-| Average Latency | <100ms | ~30-50ms |
-| Connection Success Rate | >99% | 99.8% |
-| Messages/sec | 5,000+ | ✅ |
+| Average Latency | <100ms | ~11ms |
+| Connection Success Rate | >99% | 100% |
+| Messages/sec | 5,000+ | ~2,600 (single process) |
 | Memory (1K clients) | <500MB | ~200-300MB |
 
 ## 🔧 Configuration
@@ -206,11 +256,21 @@ Expected performance with proper setup:
 ```env
 PORT=3000
 NODE_ENV=development
+LOG_LEVEL=info
+
+# Redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
+
+# RabbitMQ
+RABBITMQ_URL=amqp://localhost
+
+# Clustering
 CLUSTER_ENABLED=false
 WORKERS=4
+
+# Rate Limiting
 MAX_MESSAGES_PER_SECOND=100
 ```
 
@@ -225,10 +285,9 @@ For production with multiple CPU cores:
 
 ```bash
 cd server
+npm run build
 CLUSTER_ENABLED=true WORKERS=4 npm start
 ```
-
-This will spawn 4 worker processes (adjust based on your CPU cores).
 
 ## 🎨 UI Features
 
@@ -260,30 +319,49 @@ This will spawn 4 worker processes (adjust based on your CPU cores).
 - `subscribed` - Subscription confirmation
 - `error` - Error notification
 
+## 🐰 RabbitMQ Integration
+
+The system supports a producer-consumer pattern for price data:
+
+1. **Producer** (`npm run producer`) - Generates mock price data and publishes to `crypto_prices` queue
+2. **Consumer** (built into server) - Consumes messages and broadcasts via WebSocket
+
+This decouples data ingestion from broadcasting, enabling:
+- Independent scaling of data sources
+- Real API integration (replace producer with real feeds)
+- Message buffering during high load
+
 ## 🔐 Production Deployment
 
-### 1. Update CORS Origins
+### 1. Build TypeScript
 
-Edit `server/src/index.js` and `server/src/socket.js`:
+```bash
+cd server
+npm run build
+```
 
-```javascript
+### 2. Update CORS Origins
+
+Edit `server/src/index.ts` and `server/src/socket.ts`:
+
+```typescript
 cors: {
   origin: ['https://yourdomain.com'],
   credentials: true
 }
 ```
 
-### 2. Enable Clustering
+### 3. Enable Clustering
 
 ```bash
 CLUSTER_ENABLED=true WORKERS=8 NODE_ENV=production npm start
 ```
 
-### 3. Use Redis Cluster
+### 4. Use Redis Cluster
 
 For high availability, use Redis Cluster or Redis Sentinel.
 
-### 4. Load Balancer
+### 5. Load Balancer
 
 Use Nginx or HAProxy with sticky sessions:
 
@@ -296,16 +374,14 @@ upstream socketio {
 }
 ```
 
-### 5. Docker Deployment
-
-Create `Dockerfile`:
+### 6. Docker Deployment
 
 ```dockerfile
 FROM node:20-slim
 WORKDIR /app
 COPY server/package*.json ./
 RUN npm ci --production
-COPY server/ ./
+COPY server/dist ./dist
 EXPOSE 3000
 CMD ["npm", "start"]
 ```
@@ -313,7 +389,10 @@ CMD ["npm", "start"]
 Build and run:
 ```bash
 docker build -t crypto-dashboard .
-docker run -p 3000:3000 -e REDIS_HOST=redis crypto-dashboard
+docker run -p 3000:3000 \
+  -e REDIS_HOST=redis \
+  -e RABBITMQ_URL=amqp://rabbitmq \
+  crypto-dashboard
 ```
 
 ## 🐛 Troubleshooting
@@ -324,33 +403,30 @@ docker run -p 3000:3000 -e REDIS_HOST=redis crypto-dashboard
 
 **Solution:** Make sure Redis is running:
 ```bash
-# Check Redis status
 redis-cli ping  # Should return "PONG"
-
-# Start Redis
 brew services start redis  # macOS
-sudo systemctl start redis # Linux
 ```
 
-### High Memory Usage
+### RabbitMQ Connection Error
 
-**Issue:** Server uses too much memory with many connections
+**Issue:** `Failed to connect to RabbitMQ`
 
-**Solutions:**
-1. Enable clustering to distribute load
-2. Reduce `maxHttpBufferSize` in Socket.io config
-3. Implement connection limits
-4. Use Redis TTL aggressively
+**Solution:** This is a warning, not an error. The system will use the internal price generator instead.
+
+### TypeScript Compilation Errors
+
+**Solution:**
+```bash
+cd server
+npm run build
+```
 
 ### Socket.io Connection Refused
-
-**Issue:** Frontend can't connect to backend
 
 **Solutions:**
 1. Check CORS configuration
 2. Verify `VITE_SOCKET_URL` in client `.env`
 3. Ensure server is running on correct port
-4. Check firewall settings
 
 ## 📈 Scaling Strategies
 
@@ -359,6 +435,7 @@ sudo systemctl start redis # Linux
 1. **Multiple Server Instances** - Use Redis adapter to sync
 2. **Load Balancer** - Distribute connections with sticky sessions
 3. **Redis Cluster** - Distribute cache across nodes
+4. **RabbitMQ Cluster** - High-availability message queue
 
 ### Vertical Scaling
 
@@ -385,8 +462,10 @@ MIT License - Use freely for learning and production!
 
 - Socket.io for excellent WebSocket library
 - Redis for blazing-fast caching
+- RabbitMQ for reliable message queuing
 - React team for awesome UI framework
 - Artillery.io for professional load testing
+- Winston for structured logging
 
 ---
 
